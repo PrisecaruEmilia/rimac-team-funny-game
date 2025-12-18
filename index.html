@@ -286,6 +286,7 @@
               <span>Player</span>
               <input id="playerName" placeholder="e.g., Alex" maxlength="24" />
             </div>
+            <button class="secondary" id="hostBtn">Host</button>
             <button id="startBtn">Start</button>
             <button class="secondary" id="endTurnBtn">End turn</button>
             <button
@@ -366,11 +367,6 @@
    1) Host secret code
 ========================= */
       const ADMIN_CODE = "EmiliaIsTheBest";
-      // Host unlock via title click (secret gesture)
-      document.querySelector("h1").addEventListener("dblclick", () => {
-        requireHost();
-      });
-
       let isHost = sessionStorage.getItem("isHost") === "1";
 
       function $(s) {
@@ -399,6 +395,10 @@
           : "Host only";
       }
       updateHostUI();
+
+      $("#hostBtn").addEventListener("click", () => {
+        requireHost();
+      });
 
       function requireHost() {
         if (isHost) return true;
