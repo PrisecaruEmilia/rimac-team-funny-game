@@ -340,17 +340,14 @@
     </main>
 
     <script>
-      /* =========================
-   0) PASTE YOUR FIREBASE CONFIG HERE
-========================= */
       const firebaseConfig = {
-        // ✅ Replace these with your Firebase web app config:
-        apiKey: "PASTE_ME",
-        authDomain: "PASTE_ME",
-        projectId: "PASTE_ME",
-        storageBucket: "PASTE_ME",
-        messagingSenderId: "PASTE_ME",
-        appId: "PASTE_ME",
+        apiKey: "AIzaSyCZ9bUCQOUz4hdDd3Iur3TPAAKiTzyuTbk",
+        authDomain: "rimac-funny-game.firebaseapp.com",
+        projectId: "rimac-funny-game",
+        storageBucket: "rimac-funny-game.firebasestorage.app",
+        messagingSenderId: "759424355912",
+        appId: "1:759424355912:web:032f3b6335d2aeabbdd27d",
+        measurementId: "G-GRE229K5WX",
       };
 
       firebase.initializeApp(firebaseConfig);
@@ -568,8 +565,6 @@
       });
 
       $("#resetAll").addEventListener("click", async () => {
-        // NOTE: This is “open” reset. For a team-only game it’s usually fine.
-        // If you want, I can lock it behind a secret code.
         const snap = await scoresRef.get();
         const batch = db.batch();
         snap.forEach((doc) => batch.delete(doc.ref));
