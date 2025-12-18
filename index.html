@@ -382,9 +382,16 @@
       }
 
       function updateHostUI() {
-        // Start/End are visible to everyone, but only host can actually use them.
-        // Reset is hidden unless host.
+        $("#startBtn").disabled = !isHost;
+        $("#endTurnBtn").disabled = !isHost;
         $("#resetAll").style.display = isHost ? "inline-block" : "none";
+
+        $("#startBtn").title = isHost
+          ? "Start round for everyone"
+          : "Host only";
+        $("#endTurnBtn").title = isHost
+          ? "End round for everyone"
+          : "Host only";
       }
       updateHostUI();
 
