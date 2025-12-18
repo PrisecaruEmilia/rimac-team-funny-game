@@ -353,6 +353,8 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
       const scoresRef = db.collection("scores");
+      // Shared game state (controls everyone)
+      const gameStateRef = db.collection("game").doc("state");
 
       /* =========================
    Trivia content (edit freely)
@@ -422,6 +424,35 @@
         clearTimeout(t._to);
         t._to = setTimeout(() => t.classList.remove("show"), 1200);
       }
+
+      // ===== Host (secret code) =====
+      const ADMIN_CODE = "holly-jolly-2025"; // CHANGE THIS
+      let isHost = sessionStorage.getItem("isHost") === "1";
+
+      function requireHost() {
+        if (isHost) return true;
+        const entered = prompt("Host code?");
+        if (entered !== ADMIN_CODE) {
+          toast("Wrong code");
+          return false;
+        }
+        isHost = true;
+        sessionStorage.setItem("isHost", "1");
+        updateHostUI();
+        toast("Host unlocked");
+        return true;
+      }
+
+      function updateHostUI() {
+        $("#startBtn").disabled = !isHost;
+        $("#endTurnBtn").disabled = !isHost;
+        $("#resetAll").style.display = isHost ? "inline-block" : "none";
+      }
+
+      updateHostUI();
+
+      // Hide reset for everyone until host unlocks
+      $("#resetAll").style.display = "none";
 
       /* =========================
    Shared leaderboard (live)
@@ -516,7 +547,8 @@
             setTimeout(() => {
               state.idx++;
               if (state.idx >= TRIVIA.length) {
-                endRoundView();
+                state.active = false;
+                $("#status").textContent = "Waiting for host";
               } else {
                 renderQuestion();
               }
@@ -546,22 +578,26 @@
       $("#playerName").addEventListener("input", (e) =>
         setPlayer(e.target.value)
       );
-      $("#startBtn").addEventListener("click", startRound);
+      $("#startBtn").addEventListener("click", async () => {
+        if (!requireHost()) return;
 
-      $("#endTurnBtn").addEventListener("click", () => {
-        if (!state.player) {
-          toast("Set a player name");
-          return;
-        }
-        if (state.points <= 0) {
-          toast("No points to add");
-          return;
-        }
-        addScoreToSharedBoard(state.player, state.points);
-        toast(`+${state.points} added`);
-        setRoundScore(0);
-        $("#status").textContent = "Waiting";
-        arena.innerHTML = `<div class="hint">Enter your name and press <b>Start</b>.</div><div class="toast" id="toast"></div>`;
+        await gameStateRef.set({
+          phase: "playing",
+          startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        toast("Round started for everyone");
+      });
+
+      $("#endTurnBtn").addEventListener("click", async () => {
+        if (!requireHost()) return;
+
+        await gameStateRef.set({
+          phase: "ended",
+          endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        toast("Round ended");
       });
 
       $("#resetAll").addEventListener("click", async () => {
@@ -584,6 +620,50 @@
         });
         await batch.commit();
         toast("Demo added");
+      });
+
+      // Global game control (everyone listens)
+      gameStateRef.onSnapshot((doc) => {
+        const gs = doc.data() || { phase: "lobby" };
+        $("#status").textContent = gs.phase.toUpperCase();
+
+        if (gs.phase === "playing") {
+          // Start round for EVERYONE
+          state.active = true;
+          state.idx = 0;
+          state.streak = 0;
+          setRoundScore(0);
+          renderQuestion();
+        }
+
+        if (gs.phase === "ended") {
+          // Stop game for EVERYONE and submit score once
+          state.active = false;
+
+          if (state.player && state.points > 0) {
+            addScoreToSharedBoard(state.player, state.points);
+            setRoundScore(0);
+          }
+
+          arena.innerHTML = `
+      <div class="hint">
+        <b>Round ended.</b><br/>
+        Leaderboard updated 🏆
+      </div>
+      <div class="toast" id="toast"></div>
+    `;
+        }
+
+        if (gs.phase === "lobby") {
+          state.active = false;
+          arena.innerHTML = `
+      <div class="hint">
+        Type your name to join.<br/>
+        Waiting for host to start.
+      </div>
+      <div class="toast" id="toast"></div>
+    `;
+        }
       });
 
       /* Boot */
