@@ -365,7 +365,12 @@
       /* =========================
    1) Host secret code
 ========================= */
-      const ADMIN_CODE = "holly-jolly-2025"; // CHANGE THIS
+      const ADMIN_CODE = "EmiliaIsTheBest";
+      // Host unlock via title click (secret gesture)
+      document.querySelector("h1").addEventListener("dblclick", () => {
+        requireHost();
+      });
+
       let isHost = sessionStorage.getItem("isHost") === "1";
 
       function $(s) {
