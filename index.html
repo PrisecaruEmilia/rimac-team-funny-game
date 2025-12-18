@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>🎄 Team Trivia + Leaderboard</title>
+    <style>
+      :root {
+        --bg: #071326;
+        --bg2: #0b2a2a;
+        --card: #0f1f33cc;
+        --text: #eaf2ff;
+        --muted: #b8c7e6;
+        --gold: #ffd46a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        background: radial-gradient(
+            900px 600px at 15% 10%,
+            #1b5a8c55,
+            transparent 60%
+          ),
+          radial-gradient(800px 600px at 80% 20%, #1aa37a35, transparent 55%),
+          linear-gradient(135deg, var(--bg), var(--bg2));
+      }
+      .wrap {
+        max-width: 1050px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(
+          180deg,
+          rgba(3, 10, 20, 0.88),
+          rgba(3, 10, 20, 0.45)
+        );
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .top {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #d43b3b, #1aa37a);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        user-select: none;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+      .sub {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .pillbar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .pill {
+        padding: 10px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(15, 31, 51, 0.55);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      input {
+        background: rgba(0, 0, 0, 0.18);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 12px;
+        padding: 8px 10px;
+        outline: none;
+      }
+      input::placeholder {
+        color: #b9c7e699;
+      }
+      button {
+        background: linear-gradient(135deg, #1aa37a, #2b7dff);
+        color: #06101b;
+        border: none;
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+      }
+      button.secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: none;
+        font-weight: 700;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      @media (max-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 22px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+      .hd {
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .bd {
+        padding: 16px;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .arena {
+        margin-top: 12px;
+        border-radius: 18px;
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.16);
+        padding: 14px;
+        min-height: 260px;
+        position: relative;
+      }
+      .kpi {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .chip {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .wordgrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+      @media (max-width: 520px) {
+        .wordgrid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .wbtn {
+        padding: 12px 10px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        cursor: pointer;
+        text-align: left;
+        font-weight: 800;
+        user-select: none;
+      }
+      .wbtn.good {
+        background: rgba(92, 255, 179, 0.18);
+        border-color: rgba(92, 255, 179, 0.3);
+      }
+      .wbtn.bad {
+        background: rgba(255, 107, 107, 0.16);
+        border-color: rgba(255, 107, 107, 0.26);
+      }
+      .leaderboard {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .lbrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 12px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+      .score {
+        font-weight: 1000;
+        color: var(--gold);
+      }
+      .toast {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        padding: 10px 12px;
+        border-radius: 14px;
+        font-size: 12px;
+        color: var(--muted);
+        transform: translateY(6px);
+        opacity: 0;
+        transition: 0.2s;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+
+    <!-- Firebase (compat for simple copy/paste usage) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  </head>
+
+  <body>
+    <header>
+      <div class="wrap">
+        <div class="top">
+          <div class="brand">
+            <div class="logo">🎁</div>
+            <div>
+              <h1>Team Holiday Trivia</h1>
+              <div class="sub">One game • shared leaderboard • fast rounds</div>
+            </div>
+          </div>
+          <div class="pillbar">
+            <div class="pill">
+              <span>Player</span>
+              <input id="playerName" placeholder="e.g., Alex" maxlength="24" />
+            </div>
+            <button id="startBtn">Start</button>
+            <button class="secondary" id="endTurnBtn">End turn</button>
+            <button
+              class="secondary"
+              id="resetAll"
+              title="Clears Firestore scores"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="grid">
+        <section class="card">
+          <div class="hd">
+            <strong>🎄 Trivia Round</strong>
+            <span class="hint"
+              >8 questions • streak bonus • add points at end</span
+            >
+          </div>
+          <div class="bd">
+            <div class="kpi">
+              <div class="chip">
+                Current player: <strong id="who">—</strong>
+              </div>
+              <div class="chip">
+                Round score: <strong id="roundScore">0</strong>
+              </div>
+              <div class="chip">
+                Status: <strong id="status">Waiting</strong>
+              </div>
+            </div>
+
+            <div class="arena" id="arena">
+              <div class="hint">Enter your name and press <b>Start</b>.</div>
+              <div class="toast" id="toast"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="card">
+          <div class="hd">
+            <strong>🏆 Shared Leaderboard</strong>
+            <button class="secondary" id="seedDemo">Demo</button>
+          </div>
+          <div class="bd">
+            <div class="hint">
+              Everyone at the same URL sees the same scores (live).
+            </div>
+            <div style="height: 12px"></div>
+            <div id="leaderboard" class="leaderboard"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      /* =========================
+   0) PASTE YOUR FIREBASE CONFIG HERE
+========================= */
+      const firebaseConfig = {
+        // ✅ Replace these with your Firebase web app config:
+        apiKey: "PASTE_ME",
+        authDomain: "PASTE_ME",
+        projectId: "PASTE_ME",
+        storageBucket: "PASTE_ME",
+        messagingSenderId: "PASTE_ME",
+        appId: "PASTE_ME",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const scoresRef = db.collection("scores");
+
+      /* =========================
+   Trivia content (edit freely)
+========================= */
+      const TRIVIA = [
+        {
+          q: "Which reindeer is famous for a red nose?",
+          a: ["Comet", "Rudolph", "Cupid", "Blitzen"],
+          c: 1,
+        },
+        {
+          q: "What do people traditionally place on top of a Christmas tree?",
+          a: ["A star/angel", "A bell", "A sock", "A pinecone"],
+          c: 0,
+        },
+        {
+          q: "'Silent Night' was originally written in which language?",
+          a: ["English", "German", "Spanish", "Italian"],
+          c: 1,
+        },
+        {
+          q: "What color is Santa’s iconic suit (most commonly)?",
+          a: ["Blue", "Green", "Red", "Gold"],
+          c: 2,
+        },
+        {
+          q: "How many days are in the '12 Days of Christmas'?",
+          a: ["10", "11", "12", "13"],
+          c: 2,
+        },
+        {
+          q: "Which one is a traditional holiday plant?",
+          a: ["Cactus", "Mistletoe", "Bamboo", "Lavender"],
+          c: 1,
+        },
+        {
+          q: "In many places, what date is Christmas Eve?",
+          a: ["Dec 23", "Dec 24", "Dec 25", "Dec 26"],
+          c: 1,
+        },
+        {
+          q: "Finish the phrase: 'Tis the season to be…'",
+          a: ["Serious", "Jolly", "Sleepy", "Quiet"],
+          c: 1,
+        },
+      ];
+
+      /* =========================
+   UI helpers + state
+========================= */
+      const $ = (s) => document.querySelector(s);
+      const arena = $("#arena");
+      let state = { player: "", active: false, idx: 0, streak: 0, points: 0 };
+
+      function setPlayer(name) {
+        state.player = name.trim();
+        $("#who").textContent = state.player || "—";
+      }
+      function setRoundScore(n) {
+        state.points = n;
+        $("#roundScore").textContent = n;
+      }
+      function toast(msg) {
+        const t = $("#toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(t._to);
+        t._to = setTimeout(() => t.classList.remove("show"), 1200);
+      }
+
+      /* =========================
+   Shared leaderboard (live)
+========================= */
+      function renderLeaderboard() {
+        scoresRef.orderBy("score", "desc").onSnapshot((snap) => {
+          const wrap = $("#leaderboard");
+          wrap.innerHTML = "";
+          if (snap.empty) {
+            wrap.innerHTML = `<div class="hint">No scores yet — be the first 🎅</div>`;
+            return;
+          }
+          snap.docs.forEach((doc, i) => {
+            const medal =
+              i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "🎄";
+            const name = doc.id;
+            const score = doc.data().score ?? 0;
+            const row = document.createElement("div");
+            row.className = "lbrow";
+            row.innerHTML = `
+        <div style="display:flex;gap:10px;align-items:center;min-width:0">
+          <div class="badge">${medal}</div>
+          <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</strong>
+        </div>
+        <div class="score">${score}</div>
+      `;
+            wrap.appendChild(row);
+          });
+        });
+      }
+
+      function addScoreToSharedBoard(name, delta) {
+        if (!name) return;
+        scoresRef.doc(name).set(
+          {
+            score: firebase.firestore.FieldValue.increment(delta),
+            updated: firebase.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      /* =========================
+   Trivia game
+========================= */
+      function startRound() {
+        if (!state.player) {
+          toast("Type your name first");
+          $("#playerName").focus();
+          return;
+        }
+        state.active = true;
+        state.idx = 0;
+        state.streak = 0;
+        setRoundScore(0);
+        $("#status").textContent = "Playing";
+        renderQuestion();
+      }
+
+      function renderQuestion() {
+        const item = TRIVIA[state.idx];
+        arena.innerHTML = `
+    <div class="hint"><b>Q${state.idx + 1}/${TRIVIA.length}:</b> ${item.q}</div>
+    <div class="wordgrid" id="answers"></div>
+    <div style="height:10px"></div>
+    <div class="hint">Streak: <b>${state.streak}</b> • Points: <b>${
+          state.points
+        }</b></div>
+    <div class="toast" id="toast"></div>
+  `;
+        const ans = $("#answers");
+        item.a.forEach((txt, i) => {
+          const b = document.createElement("button");
+          b.className = "wbtn";
+          b.textContent = txt;
+          b.onclick = () => {
+            if (!state.active) return;
+            const correct = i === item.c;
+            if (correct) {
+              state.streak++;
+              const gain = 2 + Math.min(6, state.streak); // streak bonus
+              setRoundScore(state.points + gain);
+              b.classList.add("good");
+              toast(`Correct! +${gain}`);
+            } else {
+              state.streak = 0;
+              setRoundScore(Math.max(0, state.points - 1));
+              b.classList.add("bad");
+              toast("Nope! -1");
+            }
+            [...ans.children].forEach((x) => (x.disabled = true));
+            setTimeout(() => {
+              state.idx++;
+              if (state.idx >= TRIVIA.length) {
+                endRoundView();
+              } else {
+                renderQuestion();
+              }
+            }, 650);
+          };
+          ans.appendChild(b);
+        });
+      }
+
+      function endRoundView() {
+        state.active = false;
+        $("#status").textContent = "Finished";
+        arena.innerHTML = `
+    <div style="font-size:34px;font-weight:1000;letter-spacing:.4px;text-shadow:0 8px 18px rgba(0,0,0,.35)">
+      🎉 ${state.points} pts
+    </div>
+    <div class="hint" style="margin-top:10px">
+      Click <b>End turn</b> to add your score to the shared leaderboard.
+    </div>
+    <div class="toast" id="toast"></div>
+  `;
+      }
+
+      /* =========================
+   Buttons
+========================= */
+      $("#playerName").addEventListener("input", (e) =>
+        setPlayer(e.target.value)
+      );
+      $("#startBtn").addEventListener("click", startRound);
+
+      $("#endTurnBtn").addEventListener("click", () => {
+        if (!state.player) {
+          toast("Set a player name");
+          return;
+        }
+        if (state.points <= 0) {
+          toast("No points to add");
+          return;
+        }
+        addScoreToSharedBoard(state.player, state.points);
+        toast(`+${state.points} added`);
+        setRoundScore(0);
+        $("#status").textContent = "Waiting";
+        arena.innerHTML = `<div class="hint">Enter your name and press <b>Start</b>.</div><div class="toast" id="toast"></div>`;
+      });
+
+      $("#resetAll").addEventListener("click", async () => {
+        // NOTE: This is “open” reset. For a team-only game it’s usually fine.
+        // If you want, I can lock it behind a secret code.
+        const snap = await scoresRef.get();
+        const batch = db.batch();
+        snap.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        toast("Leaderboard reset");
+      });
+
+      $("#seedDemo").addEventListener("click", async () => {
+        const demo = { Alex: 12, Sam: 21, Taylor: 15, Jordan: 9 };
+        const batch = db.batch();
+        Object.entries(demo).forEach(([name, score]) => {
+          batch.set(
+            scoresRef.doc(name),
+            { score, updated: firebase.firestore.FieldValue.serverTimestamp() },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+        toast("Demo added");
+      });
+
+      /* Boot */
+      renderLeaderboard();
+    </script>
+  </body>
+</html>
