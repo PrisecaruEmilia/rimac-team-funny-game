@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>🎄 Team Trivia + Leaderboard</title>
+    <title>🎄 Team Holiday Trivia (Host Controlled)</title>
     <style>
       :root {
         --bg: #071326;
@@ -122,6 +122,10 @@
         border: 1px solid rgba(255, 255, 255, 0.16);
         box-shadow: none;
         font-weight: 700;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
       }
       .grid {
         display: grid;
@@ -272,7 +276,9 @@
             <div class="logo">🎁</div>
             <div>
               <h1>Team Holiday Trivia</h1>
-              <div class="sub">One game • shared leaderboard • fast rounds</div>
+              <div class="sub">
+                Host-controlled • shared leaderboard • everyone starts together
+              </div>
             </div>
           </div>
           <div class="pillbar">
@@ -300,24 +306,22 @@
           <div class="hd">
             <strong>🎄 Trivia Round</strong>
             <span class="hint"
-              >8 questions • streak bonus • add points at end</span
+              >Host starts/ends for everyone • scores submit on End turn</span
             >
           </div>
           <div class="bd">
             <div class="kpi">
-              <div class="chip">
-                Current player: <strong id="who">—</strong>
-              </div>
+              <div class="chip">Player: <strong id="who">—</strong></div>
               <div class="chip">
                 Round score: <strong id="roundScore">0</strong>
               </div>
-              <div class="chip">
-                Status: <strong id="status">Waiting</strong>
-              </div>
+              <div class="chip">Status: <strong id="status">LOBBY</strong></div>
             </div>
 
             <div class="arena" id="arena">
-              <div class="hint">Enter your name and press <b>Start</b>.</div>
+              <div class="hint">
+                Type your name to join. Wait for the host to press <b>Start</b>.
+              </div>
               <div class="toast" id="toast"></div>
             </div>
           </div>
@@ -340,6 +344,9 @@
     </main>
 
     <script>
+      /* =========================
+   0) Firebase config
+========================= */
       const firebaseConfig = {
         apiKey: "AIzaSyCZ9bUCQOUz4hdDd3Iur3TPAAKiTzyuTbk",
         authDomain: "rimac-funny-game.firebaseapp.com",
@@ -353,11 +360,50 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
       const scoresRef = db.collection("scores");
-      // Shared game state (controls everyone)
       const gameStateRef = db.collection("game").doc("state");
 
       /* =========================
-   Trivia content (edit freely)
+   1) Host secret code
+========================= */
+      const ADMIN_CODE = "holly-jolly-2025"; // CHANGE THIS
+      let isHost = sessionStorage.getItem("isHost") === "1";
+
+      function $(s) {
+        return document.querySelector(s);
+      }
+      const arena = $("#arena");
+
+      function toast(msg) {
+        const t = $("#toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(t._to);
+        t._to = setTimeout(() => t.classList.remove("show"), 1200);
+      }
+
+      function updateHostUI() {
+        // Start/End are visible to everyone, but only host can actually use them.
+        // Reset is hidden unless host.
+        $("#resetAll").style.display = isHost ? "inline-block" : "none";
+      }
+      updateHostUI();
+
+      function requireHost() {
+        if (isHost) return true;
+        const entered = prompt("Host code?");
+        if (entered !== ADMIN_CODE) {
+          toast("Wrong code");
+          return false;
+        }
+        isHost = true;
+        sessionStorage.setItem("isHost", "1");
+        updateHostUI();
+        toast("Host unlocked");
+        return true;
+      }
+
+      /* =========================
+   2) Trivia content (edit freely)
 ========================= */
       const TRIVIA = [
         {
@@ -403,59 +449,22 @@
       ];
 
       /* =========================
-   UI helpers + state
+   3) UI state
 ========================= */
-      const $ = (s) => document.querySelector(s);
-      const arena = $("#arena");
       let state = { player: "", active: false, idx: 0, streak: 0, points: 0 };
+      let currentRoundId = null;
 
       function setPlayer(name) {
-        state.player = name.trim();
+        state.player = (name || "").trim();
         $("#who").textContent = state.player || "—";
       }
       function setRoundScore(n) {
-        state.points = n;
-        $("#roundScore").textContent = n;
+        state.points = n | 0;
+        $("#roundScore").textContent = state.points;
       }
-      function toast(msg) {
-        const t = $("#toast");
-        t.textContent = msg;
-        t.classList.add("show");
-        clearTimeout(t._to);
-        t._to = setTimeout(() => t.classList.remove("show"), 1200);
-      }
-
-      // ===== Host (secret code) =====
-      const ADMIN_CODE = "holly-jolly-2025"; // CHANGE THIS
-      let isHost = sessionStorage.getItem("isHost") === "1";
-
-      function requireHost() {
-        if (isHost) return true;
-        const entered = prompt("Host code?");
-        if (entered !== ADMIN_CODE) {
-          toast("Wrong code");
-          return false;
-        }
-        isHost = true;
-        sessionStorage.setItem("isHost", "1");
-        updateHostUI();
-        toast("Host unlocked");
-        return true;
-      }
-
-      function updateHostUI() {
-        $("#startBtn").disabled = !isHost;
-        $("#endTurnBtn").disabled = !isHost;
-        $("#resetAll").style.display = isHost ? "inline-block" : "none";
-      }
-
-      updateHostUI();
-
-      // Hide reset for everyone until host unlocks
-      $("#resetAll").style.display = "none";
 
       /* =========================
-   Shared leaderboard (live)
+   4) Shared leaderboard (live)
 ========================= */
       function renderLeaderboard() {
         scoresRef.orderBy("score", "desc").onSnapshot((snap) => {
@@ -496,22 +505,8 @@
       }
 
       /* =========================
-   Trivia game
+   5) Trivia rendering
 ========================= */
-      function startRound() {
-        if (!state.player) {
-          toast("Type your name first");
-          $("#playerName").focus();
-          return;
-        }
-        state.active = true;
-        state.idx = 0;
-        state.streak = 0;
-        setRoundScore(0);
-        $("#status").textContent = "Playing";
-        renderQuestion();
-      }
-
       function renderQuestion() {
         const item = TRIVIA[state.idx];
         arena.innerHTML = `
@@ -523,6 +518,7 @@
         }</b></div>
     <div class="toast" id="toast"></div>
   `;
+
         const ans = $("#answers");
         item.a.forEach((txt, i) => {
           const b = document.createElement("button");
@@ -530,10 +526,11 @@
           b.textContent = txt;
           b.onclick = () => {
             if (!state.active) return;
+
             const correct = i === item.c;
             if (correct) {
               state.streak++;
-              const gain = 2 + Math.min(6, state.streak); // streak bonus
+              const gain = 2 + Math.min(6, state.streak);
               setRoundScore(state.points + gain);
               b.classList.add("good");
               toast(`Correct! +${gain}`);
@@ -543,12 +540,24 @@
               b.classList.add("bad");
               toast("Nope! -1");
             }
+
             [...ans.children].forEach((x) => (x.disabled = true));
+
             setTimeout(() => {
               state.idx++;
               if (state.idx >= TRIVIA.length) {
+                // Player finished, but submission happens when HOST ends the round
                 state.active = false;
-                $("#status").textContent = "Waiting for host";
+                $("#status").textContent = "FINISHED (WAITING HOST)";
+                arena.innerHTML = `
+            <div style="font-size:34px;font-weight:1000;letter-spacing:.4px;text-shadow:0 8px 18px rgba(0,0,0,.35)">
+              ✅ Done — ${state.points} pts
+            </div>
+            <div class="hint" style="margin-top:10px">
+              Waiting for the host to end the round…
+            </div>
+            <div class="toast" id="toast"></div>
+          `;
               } else {
                 renderQuestion();
               }
@@ -558,97 +567,66 @@
         });
       }
 
-      function endRoundView() {
-        state.active = false;
-        $("#status").textContent = "Finished";
-        arena.innerHTML = `
-    <div style="font-size:34px;font-weight:1000;letter-spacing:.4px;text-shadow:0 8px 18px rgba(0,0,0,.35)">
-      🎉 ${state.points} pts
-    </div>
-    <div class="hint" style="margin-top:10px">
-      Click <b>End turn</b> to add your score to the shared leaderboard.
-    </div>
-    <div class="toast" id="toast"></div>
-  `;
+      /* =========================
+   6) Global game control
+========================= */
+      function setPhaseLabel(phase) {
+        $("#status").textContent = (phase || "LOBBY").toUpperCase();
       }
 
-      /* =========================
-   Buttons
-========================= */
-      $("#playerName").addEventListener("input", (e) =>
-        setPlayer(e.target.value)
-      );
-      $("#startBtn").addEventListener("click", async () => {
-        if (!requireHost()) return;
+      // Submit once per round per device
+      async function submitOnceForRound(roundId) {
+        if (!roundId) return;
+        if (!state.player) return;
 
-        await gameStateRef.set({
-          phase: "playing",
-          startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
+        const key = `submitted_${roundId}_${state.player}`;
+        if (localStorage.getItem(key) === "1") return;
 
-        toast("Round started for everyone");
-      });
+        if (state.points > 0) {
+          addScoreToSharedBoard(state.player, state.points);
+        }
 
-      $("#endTurnBtn").addEventListener("click", async () => {
-        if (!requireHost()) return;
+        localStorage.setItem(key, "1");
+        setRoundScore(0);
+      }
 
-        await gameStateRef.set({
-          phase: "ended",
-          endedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-
-        toast("Round ended");
-      });
-
-      $("#resetAll").addEventListener("click", async () => {
-        const snap = await scoresRef.get();
-        const batch = db.batch();
-        snap.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
-        toast("Leaderboard reset");
-      });
-
-      $("#seedDemo").addEventListener("click", async () => {
-        const demo = { Alex: 12, Sam: 21, Taylor: 15, Jordan: 9 };
-        const batch = db.batch();
-        Object.entries(demo).forEach(([name, score]) => {
-          batch.set(
-            scoresRef.doc(name),
-            { score, updated: firebase.firestore.FieldValue.serverTimestamp() },
-            { merge: true }
-          );
-        });
-        await batch.commit();
-        toast("Demo added");
-      });
-
-      // Global game control (everyone listens)
       gameStateRef.onSnapshot((doc) => {
-        const gs = doc.data() || { phase: "lobby" };
-        $("#status").textContent = gs.phase.toUpperCase();
+        const gs = doc.data() || { phase: "lobby", roundId: null };
+        currentRoundId = gs.roundId || currentRoundId;
+
+        setPhaseLabel(gs.phase);
 
         if (gs.phase === "playing") {
-          // Start round for EVERYONE
+          // Start for everyone
           state.active = true;
           state.idx = 0;
           state.streak = 0;
           setRoundScore(0);
+
+          if (!state.player) {
+            arena.innerHTML = `
+        <div class="hint">
+          Round started, but you haven't typed a name yet.<br/>
+          Type your name above, then you can play (refresh not required).
+        </div>
+        <div class="toast" id="toast"></div>
+      `;
+            return;
+          }
           renderQuestion();
         }
 
         if (gs.phase === "ended") {
-          // Stop game for EVERYONE and submit score once
+          // Stop for everyone + submit once
           state.active = false;
-
-          if (state.player && state.points > 0) {
-            addScoreToSharedBoard(state.player, state.points);
-            setRoundScore(0);
-          }
+          submitOnceForRound(gs.roundId);
 
           arena.innerHTML = `
       <div class="hint">
-        <b>Round ended.</b><br/>
-        Leaderboard updated 🏆
+        <b>Round ended.</b> Leaderboard updated 🏆
+      </div>
+      <div class="hint" style="margin-top:8px">
+        Start another round when ready.
       </div>
       <div class="toast" id="toast"></div>
     `;
@@ -658,12 +636,91 @@
           state.active = false;
           arena.innerHTML = `
       <div class="hint">
-        Type your name to join.<br/>
-        Waiting for host to start.
+        Type your name to join. Waiting for the host to press <b>Start</b>.
       </div>
       <div class="toast" id="toast"></div>
     `;
         }
+      });
+
+      /* =========================
+   7) Buttons (host controls)
+========================= */
+      $("#playerName").addEventListener("input", (e) =>
+        setPlayer(e.target.value)
+      );
+
+      // Start: host starts a new round for everyone
+      $("#startBtn").addEventListener("click", async () => {
+        if (!requireHost()) return;
+
+        const roundId = String(Date.now());
+        await gameStateRef.set(
+          {
+            phase: "playing",
+            roundId,
+            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        toast("Round started");
+      });
+
+      // End turn: host ends round for everyone (and triggers auto-submit)
+      $("#endTurnBtn").addEventListener("click", async () => {
+        if (!requireHost()) return;
+
+        const snap = await gameStateRef.get();
+        const gs = snap.data() || {};
+        if (gs.phase !== "playing") {
+          toast("No active round");
+          return;
+        }
+
+        await gameStateRef.set(
+          {
+            phase: "ended",
+            endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        toast("Round ended");
+      });
+
+      // Reset leaderboard (host only)
+      $("#resetAll").addEventListener("click", async () => {
+        if (!requireHost()) return;
+        if (!confirm("Reset leaderboard for everyone?")) return;
+
+        const snap = await scoresRef.get();
+        const batch = db.batch();
+        snap.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+
+        // Return to lobby (optional)
+        await gameStateRef.set({ phase: "lobby" }, { merge: true });
+
+        toast("Leaderboard reset");
+      });
+
+      // Demo (anyone can click; remove if you want)
+      $("#seedDemo").addEventListener("click", async () => {
+        const demo = { Alex: 12, Sam: 21, Taylor: 15, Jordan: 9 };
+        const batch = db.batch();
+        Object.entries(demo).forEach(([name, score]) => {
+          batch.set(
+            scoresRef.doc(name),
+            {
+              score,
+              updated: firebase.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+        toast("Demo added");
       });
 
       /* Boot */
